@@ -1,30 +1,35 @@
-FROM mcr.microsoft.com/devcontainers/base:bullseye
+FROM linuxmintd/mint21.3-amd64
 
-RUN apt update && export DEBIAN_FRONTEND=noninteractive \
-    && apt install -y git build-essential gdb python3-pip openjdk-11-jdk ruby-dev npm wget unzip file netcat
+ENV DEBIAN_FRONTEND noninteractive
 
-RUN DEBIAN_FRONTEND=noninteractive apt install -y wireshark audacity firefox-esr
+RUN sed -i 's#http://archive.ubuntu.com/#http://ubuntu.mirrors.tds.net/pub/ubuntu/#' /etc/apt/sources.list
 
-RUN pip3 install --upgrade pip && pip3 install pwntools ROPgadget Pycryptodome
+# built-in packages
+RUN apt-get update
+RUN apt-get install -y python-apt
+RUN apt-get install -y --no-install-recommends software-properties-common curl
+RUN add-apt-repository -y ppa:fcwu-tw/ppa
+RUN apt-get update
+RUN apt-get install -y --no-install-recommends --allow-unauthenticated supervisor openssh-server pwgen sudo vim-tiny net-tools \
+        x11vnc xserver-xorg-video-dummy gtk2-engines-murrine ttf-ubuntu-font-family firefox \
+        nginx python-pip python-dev build-essential mesa-utils libgl1-mesa-dri \
+        gnome-themes-standard gtk2-engines-pixbuf gtk2-engines-murrine pinta \
+        dbus-x11 x11-utils
+RUN apt-get install -y --allow-unauthenticated marco caja mate-desktop mate-panel mate-session-manager mate-terminal 
+RUN apt-get install -y --allow-unauthenticated mate-themes mate-control-center
+#RUN apt-get autoclean
+#RUN apt-get autoremove 
 
-RUN gem install one_gadget rake zsteg
 
-RUN wget -O /opt/Stegsolve.jar http://www.caesum.com/handbook/Stegsolve.jar
+# tini for subreap                                   
+ENV TINI_VERSION v0.9.0
+ADD https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini /bin/tini
+RUN chmod +x /bin/tini
 
-RUN git clone https://github.com/RsaCtfTool/RsaCtfTool.git /opt/RsaCtfTool \
-    && cd /opt/RsaCtfTool \
-    && pip3 install -r requirements.txt \
-    && ln -s /opt/RsaCtfTool/RsaCtfTool.py /usr/local/bin/rsactftool
+ADD image /
+RUN pip install setuptools wheel && pip install -r /usr/lib/web/requirements.txt
 
-RUN wget -O /opt/recaf.jar https://github.com/Col-E/Recaf/releases/download/2.21.13/recaf-2.21.13-J8-jar-with-dependencies.jar
+EXPOSE 80
+WORKDIR /root
 
-USER vscode
-
-SHELL ["/bin/bash", "-c"]
-
-RUN bash -c "$(curl -fsSL https://gef.blah.cat/sh)"
-
-RUN usermod -s /bin/bash vscode
-
-RUN echo "export LC_CTYPE=C.UTF-8; alias python=python3; alias stegsolve='java -jar /opt/Stegsolve.jar'; alias recaf='java -jar /opt/recaf.jar'" >> /home/vscode/.shinit
-RUN echo "ENV=$HOME/.shinit; export ENV" >> /home/vscode/.profile
+ENTRYPOINT ["/startup.sh"]
