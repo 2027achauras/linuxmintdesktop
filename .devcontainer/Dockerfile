@@ -1,4 +1,4 @@
-FROM linuxmintd/mint21.3-amd64
+FROM vcatechnology/linux-mint:17.3
 
 ENV DEBIAN_FRONTEND noninteractive
 
